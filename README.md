@@ -453,18 +453,18 @@ goto manage Jenkins –> manage credentials –> Click on Jenkins global –> ad
 final step to deploy on the Kubernetes cluster
 
 ```groovy
-stage('Deploy to Kubernetes') {
-    steps {
-        script {
-            dir('K8S') {
-                withKubeConfig(credentialsId: 'k8s') {
-                    sh 'kubectl apply -f deployment.yml'
-                    sh 'kubectl apply -f service.yml'
+stage('Deploy to kubernets'){
+            steps{
+                script{
+                    dir('K8S') {
+                        withKubeConfig(caCertificate: '', clusterName: '', contextName: '', credentialsId: 'k8s', namespace: '', restrictKubeConfigAccess: false, serverUrl: '') {
+                                sh 'kubectl apply -f deployment.yml'
+                                sh 'kubectl apply -f service.yml'
+                        }   
+                    }
                 }
             }
         }
-    }
-}
 ```
 
 Verify:
