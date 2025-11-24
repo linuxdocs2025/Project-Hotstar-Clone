@@ -1,1 +1,1 @@
-# Project-Hotstar-Clone
+# 🚀 DevSecOps CI/CD: Deploying a Secure Hotstar Clone
