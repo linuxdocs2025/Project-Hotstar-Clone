@@ -408,7 +408,7 @@ pipeline {
 
 Deploy to Container
 
-<EC2-public-ip:3000>
+< EC2-public-ip:3000 >
 
 Output
 
@@ -472,10 +472,65 @@ Verify:
 kubectl get all
 ```
 
+Copy **External IP** → Open in browser.
+
+---
+# 🔥 Output Screenshot (Final UI)
+
+Open:
+
+```
+http://<EXTERNAL-IP>:3000
+```
+<img width="889" height="384" alt="image" src="https://github.com/user-attachments/assets/37db55cd-0c8d-4b3c-a9e2-04bd1e9d0c1e" />
+
 ---
 
+# 🧨 Step 4 — Cleanup (Destroy Everything)
 
+Now Go to Jenkins Dashboard and click on Terraform-Eks job
 
+And build with parameters and destroy action
+
+It will delete the EKS cluster that provisioned
+
+<img width="660" height="197" alt="image" src="https://github.com/user-attachments/assets/79e9fd33-4b78-496f-bb57-3703c7472310" />
+
+After 10 minutes cluster will delete and wait for it. Don’t remove ec2 instance till that time.
+
+<img width="711" height="243" alt="image" src="https://github.com/user-attachments/assets/c86562f9-f93c-4d28-b572-d41fa0c329fd" />
+
+Cluster deleted
+
+<img width="715" height="188" alt="image" src="https://github.com/user-attachments/assets/592ec9a3-0bf6-41b6-848a-520c7524b7f9" />
+
+Delete the Ec2 instance & IAM role.
+
+Check the load balancer also if it is deleted or not.
+
+Congratulations on completing the journey of deploying your Hotstar clone using DevSecOps practices on AWS! This process has highlighted the power of integrating security measures seamlessly into the deployment pipeline, ensuring not only efficiency but also a robust shield against potential threats.
+
+### Key Highlights:
+
+  - Leveraging AWS services, Docker, Jenkins, and security tools, we orchestrated a secure and automated deployment pipeline.
+  - Implementing DevSecOps principles helped fortify the application against vulnerabilities through continuous security checks.
+  - The seamless integration of static code analysis, container security, and automated deployment showcases the strength of DevSecOps methodologies.
+
+---
+
+---
+
+# 🔓 Ports Used
+
+| Service      | Port            |
+| ------------ | --------------- |
+| Jenkins      | 8080            |
+| SonarQube    | 9000            |
+| Hotstar App  | 3000            |
+| Docker       | Default         |
+| EKS Services | 3000, NodePorts |
+
+---
 
 
 
