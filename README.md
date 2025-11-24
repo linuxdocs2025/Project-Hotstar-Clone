@@ -25,6 +25,7 @@ This project demonstrates how to deploy a **Hotstar Clone** application on AWS u
   * AWS CLI
   * Kubectl
   * Terraform
+  * Docker Scout
 
 ---
 
