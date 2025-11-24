@@ -14,6 +14,7 @@ spec:
     spec:
       containers:
       - name: hotstar
-        image: bijan9438/hotstar:latest
+        image: <your-dockerhub-username>/hotstar:latest
         ports:
         - containerPort: 3000  # Port your application listens on
+
