@@ -406,9 +406,73 @@ pipeline {
 
 ---
 
+Deploy to Container
 
+<EC2-public-ip:3000>
 
+Output
 
+<img width="904" height="371" alt="image" src="https://github.com/user-attachments/assets/85c5ec03-633b-43c6-b190-e5a772f7b011" />
+
+---
+
+Go to instance CLI and write;
+
+```
+aws eks update-kubeconfig --name CLUSTER NAME --region CLUSTER REGION 
+aws eks update-kubeconfig --name EKS_CLOUD --region ap-south-1
+ 
+```
+
+Let’s see the nodes
+
+```
+kubectl get nodes
+```
+Now Give this command in CLI
+
+< cat /root/.kube/config >
+
+Copy the config file to Jenkins master or the local file manager and save it
+
+copy it and save it in documents or another folder save it as secret-file.txt
+
+Install Kubernetes Plugin, Once it’s installed successfully
+
+<img width="757" height="331" alt="image" src="https://github.com/user-attachments/assets/a7eefca3-7d11-4990-a755-2cb5785567fe" />
+
+---
+
+goto manage Jenkins –> manage credentials –> Click on Jenkins global –> add credentials
+
+<img width="872" height="392" alt="image" src="https://github.com/user-attachments/assets/95d5aa67-29b9-4b08-88f0-b9c52914f4b5" />
+
+---
+
+final step to deploy on the Kubernetes cluster
+
+```groovy
+stage('Deploy to Kubernetes') {
+    steps {
+        script {
+            dir('K8S') {
+                withKubeConfig(credentialsId: 'k8s') {
+                    sh 'kubectl apply -f deployment.yml'
+                    sh 'kubectl apply -f service.yml'
+                }
+            }
+        }
+    }
+}
+```
+
+Verify:
+
+```bash
+kubectl get all
+```
+
+---
 
 
 
