@@ -148,7 +148,9 @@ Install plugins:
 * OWASP Dependency Check
 * Docker
 * Docker Pipeline
-* Docker Scout
+* Docker Commons
+* Docker API
+* Docker-build-step
 
 Add tools in **Manage Jenkins → Tools**:
 
@@ -160,12 +162,249 @@ Add tools in **Manage Jenkins → Tools**:
 
 ---
 
+## **3A — EKS Provisioning Job (Terraform)**
+
+That is done now go to Jenkins and add a terraform plugin to provision the AWS EKS using the Pipeline Job.
+
+Go to Jenkins dashboard –> Manage Jenkins –> Plugins
+
+Available Plugins, Search for Terraform and install it.
+
+<img width="748" height="160" alt="image" src="https://github.com/user-attachments/assets/5f1df44f-ff65-40a3-9a54-5fd520408ca0" />
+
+---
+let’s find the path to our Terraform (we will use it in the tools section of Terraform)
+
+## Note:-> On your EC2 install type `which terraform`
+
+Now come back to Manage Jenkins –> Tools
+
+Add the terraform in Tools
+
+<img width="744" height="520" alt="image" src="https://github.com/user-attachments/assets/14ae0fb9-df14-4275-9a5b-07c053915b05" />
+
+---
+Apply and save.
+
+CHANGE YOUR S3 BUCKET NAME IN THE BACKEND.TF
+
+I want to do this with build parameters to apply and destroy while building only.
+
+you have to add this inside job like the below image
+
+<img width="788" height="455" alt="image" src="https://github.com/user-attachments/assets/2f8cdb56-05c1-4bde-b917-68602f7c2ebd" />
+
+---
+
+Add pipeline:
+
+```groovy
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/linuxdocs2025/Project-Hotstar-Clone.git'
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                dir('EKS_TERRAFORM') {
+                    sh 'terraform init'
+                }
+            }
+        }
+
+        stage('Terraform Validate') {
+            steps {
+                dir('EKS_TERRAFORM') {
+                    sh 'terraform validate'
+                }
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+                dir('EKS_TERRAFORM') {
+                    sh 'terraform plan'
+                }
+            }
+        }
+
+        stage('Terraform Apply/Destroy') {
+            steps {
+                dir('EKS_TERRAFORM') {
+                    sh "terraform ${action} --auto-approve"
+                }
+            }
+        }
+    }
+}
+```
 
 
+let’s apply and save and Build with parameters and select action as apply
 
+<img width="685" height="207" alt="image" src="https://github.com/user-attachments/assets/a253ba28-9aaa-497e-ba07-f52ba21688e9" />
 
+Stage view it will take max 10mins to provision
 
+<img width="760" height="314" alt="image" src="https://github.com/user-attachments/assets/62dca8bc-c0fd-4808-b650-5799dd491052" />
 
+Check in Your Aws console whether it created EKS or not.
+
+<img width="740" height="184" alt="image" src="https://github.com/user-attachments/assets/0cc4b925-0a3d-497c-9522-01687f1a46b1" />
+
+Ec2 instance is created for the Node group
+
+<img width="742" height="129" alt="image" src="https://github.com/user-attachments/assets/1a11ca2a-dd9a-453b-b0f4-a62a9aea49d3" />
+
+---
+
+## **3B — Hotstar Build Pipeline**
+
+### Configure SonarQube Token
+
+Add in Jenkins Credentials → **Secret Text**
+
+### Configure Docker Credentials
+
+Add DockerHub credentials as "docker"
+
+### Configure in Global Tool Configuration
+
+Go to Manage Jenkins → Tools → Install JDK(17) and NodeJs (22) → Click on Apply and Save
+
+In the Sonarqube Dashboard add a quality gate also
+
+Administration–> Configuration–>Webhooks
+
+<img width="736" height="259" alt="image" src="https://github.com/user-attachments/assets/941b4c69-1b3c-4860-9c8f-03d8d307a93e" />
+
+Click on Create
+
+Add details
+
+```
+#in url section of quality gate
+http://jenkins-public-ip:8080/sonarqube-webhook/
+```
+
+### Install Docker Scout
+
+```bash
+docker login
+curl -sSfL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh | sh -s -- -b /usr/local/bin
+```
+
+---
+
+### Full CI/CD Pipeline
+
+```groovy
+pipeline {
+    agent any
+
+    tools {
+        jdk 'jdk17'
+        nodejs 'node22'
+    }
+
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+    }
+
+    stages {
+
+        stage('Clean Workspace') {
+            steps { cleanWs() }
+        }
+
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/linuxdocs2025/Project-Hotstar-Clone.git'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonar-server') {
+                    sh '''
+                        $SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectName=Hotstar \
+                        -Dsonar.projectKey=Hotstar
+                    '''
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                script {
+                    waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token'
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps { sh "npm install" }
+        }
+
+        stage('OWASP Scan') {
+            steps {
+                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit',
+                                odcInstallation: 'DP-Check'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+
+        stage('DockerScout File Scan') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
+                        sh 'docker-scout quickview fs://.'
+                        sh 'docker-scout cves fs://.'
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
+                        sh "docker build -t hotstar ."
+                        sh "docker tag hotstar <your-dockerhub-username>/hotstar:latest"
+                        sh "docker push <your-dockerhub-username>/hotstar:latest"
+                    }
+                }
+            }
+        }
+
+        stage('DockerScout Image Scan') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
+                        sh 'docker-scout quickview <your-dockerhub-username>/hotstar:latest'
+                        sh 'docker-scout cves <your-dockerhub-username>/hotstar:latest'
+                        sh 'docker-scout recommendations <your-dockerhub-username>/hotstar:latest'
+                    }
+                }
+            }
+        }
+
+        stage('Deploy Docker Locally') {
+            steps {
+                sh "docker run -d --name hotstar -p 3000:3000 <your-dockerhub-username>/hotstar:latest"
+            }
+        }
+    }
+}
+```
+
+---
 
 
 
